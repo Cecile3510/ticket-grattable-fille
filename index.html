@@ -11,17 +11,15 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   }
   #card {
-  position: relative;
-  width: 320px;
-  height: 569px;
-  border-radius: 15px;
-  overflow: hidden;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-  user-select: none;
-  background: url('./fille-ou-garcon-fille.png') no-repeat center center/cover;
-}
-
-
+    position: relative;
+    width: 320px;
+    height: 569px;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    user-select: none;
+    background: url('./fille-ou-garcon-fille.png') no-repeat center center/cover;
+  }
   #scratchCanvas {
     position: absolute;
     width: 300px;
@@ -30,7 +28,6 @@
     left: calc(50% - 150px);
     cursor: pointer;
     z-index: 2;
-    /* Pas de border-radius pour garder forme cœur nette */
   }
 </style>
 </head>
@@ -40,6 +37,9 @@
   <canvas id="scratchCanvas" width="400" height="600"></canvas>
 </div>
 
+<!-- 🎉 Confetti -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
 <script>
   const canvas = document.getElementById('scratchCanvas');
   const ctx = canvas.getContext('2d');
@@ -47,61 +47,32 @@
   canvas.width = 300;
   canvas.height = 160;
 
-  // Fonction pour dessiner un coeur centré dans le canvas
   function drawHeart(ctx, x, y, width, height) {
     ctx.beginPath();
     const topCurveHeight = height * 0.3;
     ctx.moveTo(x, y + topCurveHeight);
-    // côté gauche
-    ctx.bezierCurveTo(
-      x, y,
-      x - width / 2, y,
-      x - width / 2, y + topCurveHeight
-    );
-    // bas du cœur
-    ctx.bezierCurveTo(
-      x - width / 2, y + (height + topCurveHeight) / 2,
-      x, y + (height + topCurveHeight) / 1.5,
-      x, y + height
-    );
-    // côté droit
-    ctx.bezierCurveTo(
-      x, y + (height + topCurveHeight) / 1.5,
-      x + width / 2, y + (height + topCurveHeight) / 2,
-      x + width / 2, y + topCurveHeight
-    );
-    // sommet droit
-    ctx.bezierCurveTo(
-      x + width / 2, y,
-      x, y,
-      x, y + topCurveHeight
-    );
+    ctx.bezierCurveTo(x, y, x - width / 2, y, x - width / 2, y + topCurveHeight);
+    ctx.bezierCurveTo(x - width / 2, y + (height + topCurveHeight) / 2, x, y + (height + topCurveHeight) / 1.5, x, y + height);
+    ctx.bezierCurveTo(x, y + (height + topCurveHeight) / 1.5, x + width / 2, y + (height + topCurveHeight) / 2, x + width / 2, y + topCurveHeight);
+    ctx.bezierCurveTo(x + width / 2, y, x, y, x, y + topCurveHeight);
     ctx.closePath();
   }
 
-  // Dessiner masque métallique en forme de cœur
   function drawMetallicHeartMask() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // dessiner forme coeur comme masque
     ctx.save();
     drawHeart(ctx, canvas.width / 2, 5, 180, 150);
     ctx.clip();
 
-    // dégradé métallique doré taupe luxueux
-const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-gradient.addColorStop(0, '#6e5a3d');     // brun taupe profond
-gradient.addColorStop(0.25, '#8c734a');  // doré vieilli
-gradient.addColorStop(0.5, '#b39c6d');   // or patiné
-gradient.addColorStop(0.75, '#8c734a');  // rappel du doré vieilli
-gradient.addColorStop(1, '#5c4a33');     // taupe foncé profond
-ctx.fillStyle = gradient;
-ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#6e5a3d');
+    gradient.addColorStop(0.25, '#8c734a');
+    gradient.addColorStop(0.5, '#b39c6d');
+    gradient.addColorStop(0.75, '#8c734a');
+    gradient.addColorStop(1, '#5c4a33');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-
-
-
-    // rayures fines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.lineWidth = 1;
     for(let i = -canvas.height; i < canvas.width; i += 6) {
@@ -118,6 +89,7 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const brushRadius = 20;
   let isDrawing = false;
+  let hasConfettiLaunched = false;
 
   function getPointerPos(e) {
     const rect = canvas.getBoundingClientRect();
@@ -133,16 +105,13 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
   function isInsideHeart(x, y) {
-    // Pour ne permettre de gratter que dans la zone du coeur
-    // On teste si le pixel est opaque (alpha>0) dans la zone cœur
-    // Ici on va tester en utilisant isPointInPath
     ctx.beginPath();
     drawHeart(ctx, canvas.width / 2, 5, 180, 150);
     return ctx.isPointInPath(x, y);
   }
 
   function scratch(x, y) {
-    if (!isInsideHeart(x, y)) return; // pas dans le cœur => on ne gratte pas
+    if (!isInsideHeart(x, y)) return;
 
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
@@ -150,6 +119,34 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fill();
     ctx.closePath();
     ctx.globalCompositeOperation = 'source-over';
+
+    checkRevealPercentage();
+  }
+
+  function checkRevealPercentage() {
+    if (hasConfettiLaunched) return;
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let total = imageData.data.length / 4;
+    let cleared = 0;
+
+    for (let i = 3; i < imageData.data.length; i += 4) {
+      if (imageData.data[i] < 128) cleared++;
+    }
+
+    const percentCleared = (cleared / total) * 100;
+
+    if (percentCleared >= 60) {
+      hasConfettiLaunched = true;
+
+      // 🎉 Confettis rose pâle
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#fcd6e6', '#fce4ec', '#f8bbd0']
+      });
+    }
   }
 
   canvas.addEventListener('mousedown', () => isDrawing = true);
@@ -181,4 +178,5 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 </body>
 </html>
+
 
